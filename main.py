@@ -18,7 +18,7 @@ def calculates_average_salary(payment_from, payment_to):
 
 
 def predict_rub_salary_hh(language):
-    nothing = []
+    salaries = []
     moscow = "1"
     for number in count(0):
         params = {
@@ -30,46 +30,43 @@ def predict_rub_salary_hh(language):
         }
         response = requests.get("https://api.hh.ru/vacancies/", params=params)
         response.raise_for_status()
-        response = response.json()
-        for vacancie in response["items"]:
+        hh_response = response.json()
+        for vacancie in hh_response["items"]:
             if not vacancie["salary"]:
                 continue
             if vacancie["salary"]["currency"] != "RUR":
-                nothing.append(None)
-            nothing.append(
+                salaries.append(None)
+            salaries.append(
                 calculates_average_salary(
                     vacancie["salary"]["from"], vacancie["salary"]["to"]
                 )
             )
-        if number == response["pages"]:
+        if number == hh_response["pages"]:
             break
-    per_job_salaries = nothing
-    return per_job_salaries
+    return salaries
 
 
-def calculates_the_average_salary_hh(*languages):
-    languages_vacancy = dict.fromkeys(*languages)
-    for language in languages_vacancy:
+def calculates_average_salary_hh(*languages):
+    vacancy_languages = dict.fromkeys(*languages)
+    for language in vacancy_languages:
         per_job_salaries_hh = predict_rub_salary_hh(language)
         salaries = [
             int(salary) for salary in per_job_salaries_hh
             if salary
         ]
-        number_vacancies = len(per_job_salaries_hh)
-        number_of_processed_salaries = len(salaries)
+        vacancies_number = len(per_job_salaries_hh)
+        processed_vacancies_number = len(salaries)
         average_salary = int(sum(salaries) / len(salaries) if salaries else 0)
-        languages_vacancy[language] = {
-            "vacancies_found": number_vacancies,
-            "vacancies_processed": number_of_processed_salaries,
+        vacancy_languages[language] = {
+            "vacancies_found": vacancies_number,
+            "vacancies_processed": processed_vacancies_number,
             "average_salary": average_salary
         }
-    return languages_vacancy
+    return vacancy_languages
 
 
-def predict_rub_salary_sj(language):
-    load_dotenv()
-    superjob_key = os.getenv("SUPERJOB_KEY")
-    nothing = []
+def predict_rub_salary_sj(superjob_key, language):
+    salaries = []
     moscow = 4
     development_programming = 48
     for number in count(0):
@@ -86,35 +83,34 @@ def predict_rub_salary_sj(language):
             params=params
         )
         response.raise_for_status()
-        response = response.json()
-        for vacancie in response["objects"]:
+        sj_response = response.json()
+        for vacancie in sj_response["objects"]:
             if not vacancie["currency"] == "rub":
                 continue
-            nothing.append(
+            salaries.append(
                 calculates_average_salary(
                     vacancie["payment_from"], vacancie["payment_to"]
                 )
             )
-        if not response["more"]:
+        if not sj_response["more"]:
             break
-    per_job_salaries = nothing
-    return per_job_salaries
+    return salaries
 
 
-def calculates_the_average_salary_sj(*vacancies):
-    languages_vacancy = dict.fromkeys(*vacancies)
-    for language in languages_vacancy:
-        per_job_salaries_sj = predict_rub_salary_sj(language)
+def calculates_average_salary_sj(superjob_key, *languages):
+    vacancy_languages = dict.fromkeys(*languages)
+    for language in vacancy_languages:
+        per_job_salaries_sj = predict_rub_salary_sj(superjob_key, language)
         salaries = [int(salary) for salary in per_job_salaries_sj if salary]
-        number_vacancies = len(per_job_salaries_sj)
-        number_of_processed_salaries = len(salaries)
+        vacancies_number = len(per_job_salaries_sj)
+        processed_vacancies_number = len(salaries)
         average_salary = int(sum(salaries) / len(salaries) if salaries else 0)
-        languages_vacancy[language] = {
-            "vacancies_found": number_vacancies,
-            "vacancies_processed": number_of_processed_salaries,
+        vacancy_languages[language] = {
+            "vacancies_found": vacancies_number,
+            "vacancies_processed": processed_vacancies_number,
             "average_salary": average_salary
         }
-    return languages_vacancy
+    return vacancy_languages
 
 
 def converts_statistics_to_table(average_salaries, title):
@@ -132,11 +128,13 @@ def converts_statistics_to_table(average_salaries, title):
 
 
 def main():
+    load_dotenv()
+    superjob_key = os.getenv("SUPERJOB_KEY")
     languages = [
         "JavaScript", "Java", "Python", "Ruby", "PHP", "C++", "C#", "Go"
     ]
-    average_salaries_hh = calculates_the_average_salary_hh(languages)
-    average_salaries_sj = calculates_the_average_salary_sj(languages)
+    average_salaries_hh = calculates_average_salary_hh(languages)
+    average_salaries_sj = calculates_average_salary_sj(superjob_key, languages)
     print(converts_statistics_to_table(
         average_salaries_hh, "HeadHunter Moscow")
     )
